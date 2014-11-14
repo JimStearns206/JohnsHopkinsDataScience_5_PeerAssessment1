@@ -1,11 +1,6 @@
----
-title: "Reproducible Research: Peer Assessment 1"
-author: "Jim Stearns"
-date: "16-Nov-2014"
-output: 
-  html_document:
-    keep_md: true
----
+# Reproducible Research: Peer Assessment 1
+Jim Stearns  
+16-Nov-2014  
 
 
 ## Loading and preprocessing the data
