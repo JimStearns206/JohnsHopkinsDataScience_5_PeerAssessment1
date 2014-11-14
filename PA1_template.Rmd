@@ -9,8 +9,14 @@ output:
 
 
 ## Loading and preprocessing the data
-
-
+```{r}
+activityMonitoringData_zipFileName <- "activity.zip"
+stopifnot(file.exists(activityMonitoringData_zipFileName))
+unzip(activityMonitoringData_zipFileName)
+activityMonitoringData_fileName <- "activity.csv"
+stepdf = read.csv(activityMonitoringData_fileName)
+str(stepdf)
+```
 
 ## What is mean total number of steps taken per day?
 
