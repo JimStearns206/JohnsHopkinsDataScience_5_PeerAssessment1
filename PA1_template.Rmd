@@ -44,13 +44,14 @@ Aggregrate all the step entries for each date, using the dataset excluding obser
 
 ```{r}
 stepsbydate <- aggregate(stepdf_nona$steps, by=list(stepdf_nona$date), FUN=sum)
-stepsbydate$date <- as.Date(stepsbydate$Group.1)
+names(stepsbydate) <- c("date","steps")
+stepsbydate$date <- as.Date(stepsbydate$date)
 ```
 
 And the histogram:
 
-```{r}
-plot(stepsbydate$date, stepsbydate$x, type="h")
+```{r plot-date-vs-stepsByDate-noNA}
+plot(stepsbydate$date, stepsbydate$steps, type="h")
 ```
 
 *2. Calculate and report the mean and median total number of steps taken per day*
@@ -60,11 +61,11 @@ Decided: exclude dates without at least one non-NA observation of steps. Can be 
 but all NAs means that date is excluded from calculation of mean and median.
 
 ```{r}
-meanSteps <- mean(stepsbydate$x)
-medianSteps <- median(stepsbydate$x)
+meanSteps <- mean(stepsbydate$steps)
+medianSteps <- median(stepsbydate$steps)
 ```
 
-`r sprintf("Steps taken per day: median=%6.1f, median=%6.1f", meanSteps, medianSteps)`
+`r sprintf("Steps taken per day: mean=%6.1f, median=%6.1f", meanSteps, medianSteps)`
 
 ## What is the average daily activity pattern?
 
@@ -72,16 +73,17 @@ medianSteps <- median(stepsbydate$x)
 
 Using the dataset with NAs removed, aggregate by interval across all the observations:
 ```{r}
-stepsbyinterval <- aggregate(stepdf_nona$steps, by=list(stepdf_nona$interval), FUN=sum)
+stepsbyinterval <- aggregate(stepdf_nona$steps, by=list(stepdf_nona$interval), FUN=mean)
 # Rename the columns
 names(stepsbyinterval) <- c("intervalMinuteStart", "steps")
 # Add an sequence number for each interval, 0 .. 287
 minutesPerInterval <- 5
 stepsbyinterval$intervalIndex <- stepsbyinterval$intervalMinuteStart / minutesPerInterval
 ```
-```{r}
+```{r time-series-plot-interval-vs-average-steps}
 ## TODO: Improve x-axis labeling.
-plot(stepsbyinterval$intervalIndex, stepsbyinterval$steps, type="l")
+plot(stepsbyinterval$intervalIndex, stepsbyinterval$steps, type="l", 
+     main="Average Steps in 5-minute Intervals, Oct/Nov-2012")
 ```
 
 *2. Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?*
@@ -91,8 +93,8 @@ militaryMinuteInterval <- maxStepInterval$intervalMinuteStart
 intervalStartHHMM <- paste(trunc(militaryMinuteInterval/100), militaryMinuteInterval %% 100, sep=":")
 ```
 
-The maximum 5-minute interval starts at `r intervalStartHHMM` (in 24-hour military time).
-It contains `r maxStepInterval$steps` steps.
+The 5-minute interval with the largest average number of steps starts at `r intervalStartHHMM` (in 24-hour military time).
+It contains `r trunc(maxStepInterval$steps)` steps.
 
 ## Imputing missing values
 
@@ -100,11 +102,71 @@ It contains `r maxStepInterval$steps` steps.
 
 *1. Calculate and report the total number of missing values in the dataset (i.e. the total number of rows with NAs)*
 
+```{r}
+nIncompleteCases <- sum(!complete.cases(stepdf))
+nStepsAreNA <- sum(is.na(stepdf$steps))
+naStepsVisavisIncompleteCases <- 'some incomplete cases have non-NA steps'
+if (nStepsAreNA == nIncompleteCases)
+{
+    naStepsVisavisIncompleteCases <- 'all incomplete cases have NA steps'
+}
+```
+The number of step-interval observations (rows) with missing values is `r nIncompleteCases`.
+The number of these incomplete rows with missing (NA) steps value is `r nStepsAreNA` 
+(`r naStepsVisavisIncompleteCases`).
+
 *2. Devise a strategy for filling in all of the missing values in the dataset. The strategy does not need to be sophisticated. For example, you could use the mean/median for that day, or the mean for that 5-minute interval, etc.*
+
+The algorithm chosen for imputing a value to a NA steps: use the truncated (integer) value of the 
+average number of steps for that time-of-day interval computed over two months.
 
 *3. Create a new dataset that is equal to the original dataset but with the missing data filled in.*
 
-*4. Make a histogram of the total number of steps taken each day and Calculate and report the mean and median total number of steps taken per day. Do these values differ from the estimates from the first part of the assignment? What is the impact of imputing missing data on the estimates of the total daily number of steps?*
+```{r}
+stepdf_imputed <- stepdf
+for (row in 1:nrow(stepdf_imputed))
+{
+    if (is.na(stepdf_imputed$steps[row]))
+    {
+        thisRowInterval <- stepdf_imputed$interval[row]
+        imputedStepValue <- stepsbyinterval$steps[thisRowInterval == stepsbyinterval$intervalMinuteStart]
+        stepdf_imputed$steps[row] <- imputedStepValue
+    }
+}
+```
+Quick cross-checks:
+
+* Number of entries in stepdf_imputed with NA steps: `r sum(is.na(stepdf_imputed$steps))` (should be 0)
+
+* Number of rows with newly non-NA step values should equal number of rows in stepdf with NA steps:
+```{r}
+nNaSteps <- sum(is.na(stepdf$steps))
+nNewlyNonNaSteps <- sum(is.na(stepdf$steps) & !is.na(stepdf_imputed$steps))
+```
+`r  nNaSteps == nNewlyNonNaSteps` (`r nNaSteps` == `r nNewlyNonNaSteps`)
+
+*4. Make a histogram of the total number of steps taken each day and Calculate and report the mean and median total number of steps taken per day.*
+
+```{r}
+stepsbydate_imputed <- aggregate(stepdf_imputed$steps, by=list(stepdf_imputed$date), FUN=sum)
+names(stepsbydate_imputed) <- c("date","steps")
+stepsbydate_imputed$date <- as.Date(stepsbydate_imputed$date)
+```
+
+```{r plot-date-vs-stepsByDate-NAimputed}
+plot(stepsbydate_imputed$date, stepsbydate_imputed$steps, type="h")
+```
+
+```{r}
+meanSteps_imputed <- mean(stepsbydate_imputed$steps)
+medianSteps_imputed <- median(stepsbydate_imputed$steps)
+```
+`r sprintf("Steps, including imputed, taken per day: mean=%6.1f, median=%6.1f", 
+    meanSteps_imputed, medianSteps_imputed)`
+
+*Do these values differ from the estimates from the first part of the assignment? What is the impact of imputing missing data on the estimates of the total daily number of steps?*
+
+Imputing values to NA steps has little or no impact on the mean or median steps taken.
 
 ## Are there differences in activity patterns between weekdays and weekends?
 
@@ -112,4 +174,8 @@ It contains `r maxStepInterval$steps` steps.
 
 *1. Create a new factor variable in the dataset with two levels – “weekday” and “weekend” indicating whether a given date is a weekday or weekend day.*
 
+(NOT DONE)
+
 *2. Make a panel plot containing a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis). See the README file in the GitHub repository to see an example of what this plot should look like using simulated data.*
+
+(NOT DONE)
