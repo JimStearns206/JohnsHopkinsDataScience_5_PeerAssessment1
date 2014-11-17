@@ -183,4 +183,34 @@ str(stepdf_imputed$daytype)
 
 *2. Make a panel plot containing a time series plot (i.e. type = "l") of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis). See the README file in the GitHub repository to see an example of what this plot should look like using simulated data.*
 
-(NOT DONE)
+```{r}
+stepsbyinterval_weekend <- aggregate(stepdf_imputed$steps[stepdf_imputed$daytype == "weekend"], 
+                            by=list(stepdf_imputed$interval[stepdf_imputed$daytype == "weekend"]), 
+                            FUN=mean)
+# Rename the columns
+names(stepsbyinterval_weekend) <- c("intervalMinuteStart", "steps")
+# Add an sequence number for each interval, 0 .. 287
+minutesPerInterval <- 5
+stepsbyinterval_weekend$intervalIndex <- stepsbyinterval_weekend$intervalMinuteStart / minutesPerInterval
+```
+
+```{r}
+stepsbyinterval_weekday <- aggregate(stepdf_imputed$steps[stepdf_imputed$daytype == "weekday"], 
+                            by=list(stepdf_imputed$interval[stepdf_imputed$daytype == "weekday"]), 
+                            FUN=mean)
+# Rename the columns
+names(stepsbyinterval_weekday) <- c("intervalMinuteStart", "steps")
+# Add an sequence number for each interval, 0 .. 287
+minutesPerInterval <- 5
+stepsbyinterval_weekday$intervalIndex <- stepsbyinterval_weekday$intervalMinuteStart / minutesPerInterval
+```
+
+```{r time-series-plot-interval-vs-average-steps-weekend-and-weekday}
+## TODO: Improve x-axis labeling.
+par(mfrow=c(2,1))
+plot(stepsbyinterval_weekend$intervalIndex, stepsbyinterval_weekend$steps, type="l", 
+     main="Average Steps in 5-minute Intervals, Oct/Nov-2012 Weekends")
+
+plot(stepsbyinterval_weekday$intervalIndex, stepsbyinterval_weekday$steps, type="l", 
+     main="Average Steps in 5-minute Intervals, Oct/Nov-2012 Weekdays")
+```
